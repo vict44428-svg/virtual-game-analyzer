@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>VirtualAI</title>
+
+<style>
+*{
+box-sizing:border-box;
+}
+
+body{
+margin:0;
+font-family:Arial,sans-serif;
+background:#07111f;
+color:white;
+}
+
+.container{
+max-width:700px;
+margin:auto;
+padding:20px;
+}
+
+.header{
+text-align:center;
+padding:30px 5px;
+}
+
+.logo{
+font-size:42px;
+font-weight:900;
+}
+
+.logo span{
+color:#00e676;
+}
+
+.subtitle{
+color:#9eafc2;
+font-size:17px;
+margin-top:8px;
+}
+
+.card{
+background:#101e2e;
+border:1px solid #243a52;
+border-radius:20px;
+padding:20px;
+margin-bottom:18px;
+}
+
+.uploadBox{
+border:2px dashed #00e676;
+border-radius:16px;
+padding:30px 15px;
+text-align:center;
+}
+
+.camera{
+font-size:55px;
+margin-bottom:10px;
+}
+
+.uploadTitle{
+font-size:21px;
+font-weight:bold;
+margin-bottom:10px;
+}
+
+.description{
+color:#91a3b7;
+line-height:1.5;
+}
+
+.chooseButton{
+display:block;
+background:#00e676;
+color:#00150b;
+font-size:17px;
+font-weight:bold;
+padding:16px;
+border-radius:12px;
+margin-top:20px;
+cursor:pointer;
+text-align:center;
+}
+
+#imageInput{
+display:none;
+}
+
+#preview{
+width:100%;
+margin-top:20px;
+border-radius:14px;
+display:none;
+max-height:600px;
+object-fit:contain;
+}
+
+.analyzeButton{
+width:100%;
+padding:17px;
+margin-top:18px;
+border:none;
+border-radius:12px;
+background:#00c853;
+color:white;
+font-size:17px;
+font-weight:bold;
+display:none;
+}
+
+.clearButton{
+width:100%;
+padding:15px;
+margin-top:12px;
+border:none;
+border-radius:12px;
+background:#263b53;
+color:white;
+font-size:16px;
+font-weight:bold;
+}
+
+.status{
+text-align:center;
+margin-top:15px;
+color:#9eafc2;
+}
+
+.progress{
+width:100%;
+height:8px;
+background:#26374b;
+border-radius:10px;
+overflow:hidden;
+margin-top:10px;
+display:none;
+}
+
+.progressInner{
+height:100%;
+width:0%;
+background:#00e676;
+transition:.3s;
+}
+
+.results{
+display:none;
+}
+
+.game{
+background:#0b1726;
+border:1px solid #28415a;
+border-radius:14px;
+padding:16px;
+margin-top:12px;
+}
+
+.gameName{
+font-size:18px;
+font-weight:bold;
+line-height:1.5;
+}
+
+.line{
+display:flex;
+justify-content:space-between;
+padding:10px 0;
+border-bottom:1px solid #203246;
+}
+
+.line:last-child{
+border-bottom:none;
+}
+
+.green{
+color:#00e676;
+font-weight:bold;
+}
+
+.yellow{
+color:#ffd740;
+font-weight:bold;
+}
+
+.red{
+color:#ff5252;
+font-weight:bold;
+}
+
+.warning{
+margin-top:15px;
+padding:14px;
+border-radius:12px;
+background:#321b1b;
+color:#ff9e99;
+font-size:13px;
+line-height:1.5;
+}
+
+.footer{
+text-align:center;
+color:#65798e;
+font-size:12px;
+padding:20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+
+<div class="logo">
+VIRTUAL<span>AI</span>
+</div>
+
+<div class="subtitle">
+Virtual Game Screenshot Analyzer
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="uploadBox">
+
+<div class="camera">
+📸
+</div>
+
+<div class="uploadTitle">
+Upload SportyBet Screenshot
+</div>
+
+<div class="description">
+Select a screenshot containing your virtual football games and odds.
+</div>
+
+
+<label class="chooseButton" for="imageInput">
+📁 CHOOSE SCREENSHOT
+</label>
+
+<input
+id="imageInput"
+type="file"
+accept="image/*"
+>
+
+
+<img id="preview">
+
+
+<button
+id="analyzeButton"
+class="analyzeButton"
+>
+🔍 ANALYZE SCREENSHOT
+</button>
+
+<button
+id="clearButton"
+class="clearButton"
+>
+🗑️ CLEAR
+</button>
+
+<div id="status" class="status"></div>
+
+<div id="progress" class="progress">
+<div id="progressInner" class="progressInner"></div>
+</div>
+
+</div>
+
+</div>
+
+
+<div id="results" class="card results">
+
+<h2>
+🏆 Analysis
+</h2>
+
+<div id="games"></div>
+
+<div class="warning">
+
+⚠️ IMPORTANT: This website provides statistical estimates.
+It cannot see or reverse-engineer SportyBet's private RNG or guarantee
+future virtual-game results.
+
+</div>
+
+</div>
+
+
+<div class="footer">
+
+VirtualAI • Statistical analysis only
+
+</div>
+
+</div>
+
+
+<script>
+
+const imageInput =
+document.getElementById("imageInput");
+
+const preview =
+document.getElementById("preview");
+
+const analyzeButton =
+document.getElementById("analyzeButton");
+
+const clearButton =
+document.getElementById("clearButton");
+
+const status =
+document.getElementById("status");
+
+const progress =
+document.getElementById("progress");
+
+const progressInner =
+document.getElementById("progressInner");
+
+const results =
+document.getElementById("results");
+
+const games =
+document.getElementById("games");
+
+
+let selectedFile = null;
+
+
+imageInput.addEventListener("change",function(){
+
+const file=this.files && this.files[0];
+
+if(!file){
+
+status.textContent="No image selected.";
+
+return;
+
+}
+
+selectedFile=file;
+
+const reader=new FileReader();
+
+
+reader.onload=function(event){
+
+preview.src=event.target.result;
+
+preview.style.display="block";
+
+analyzeButton.style.display="block";
+
+status.textContent="✅ Screenshot loaded successfully.";
+
+};
+
+reader.onerror=function(){
+
+status.textContent="❌ Could not load the image.";
+
+};
+
+reader.readAsDataURL(file);
+
+});
+
+
+analyzeButton.addEventListener("click",function(){
+
+if(!selectedFile){
+
+alert("Please choose a screenshot first.");
+
+return;
+
+}
+
+status.textContent="🔎 Reading screenshot...";
+
+progress.style.display="block";
+
+progressInner.style.width="20%";
+
+setTimeout(function(){
+
+progressInner.style.width="50%";
+
+status.textContent="📊 Analyzing games...";
+
+},700);
+
+
+setTimeout(function(){
+
+progressInner.style.width="80%";
+
+},1400);
+
+
+setTimeout(function(){
+
+progressInner.style.width="100%";
+
+status.textContent="✅ Analysis complete.";
+
+showDemoResults();
+
+},2100);
+
+});
+
+
+function showDemoResults(){
+
+results.style.display="block";
+
+games.innerHTML="";
+
+const demoGames=[
+
+{
+name:"Detected Game 1",
+market:"Over 1.5",
+probability:78
+},
+
+{
+name:"Detected Game 2",
+market:"Under 4.5",
+probability:74
+},
+
+{
+name:"Detected Game 3",
+market:"Double Chance",
+probability:68
+}
+
+];
+
+
+demoGames.forEach(function(game,index){
+
+let cls="red";
+
+if(game.probability>=75){
+cls="green";
+}
+else if(game.probability>=60){
+cls="yellow";
+}
+
+games.innerHTML+=`
+
+<div class="game">
+
+<div class="gameName">
+${index+1}. ${game.name}
+</div>
+
+<div class="line">
+<span>Best market</span>
+<strong>${game.market}</strong>
+</div>
+
+<div class="line">
+<span>Estimated probability</span>
+<strong class="${cls}">
+${game.probability}%
+</strong>
+</div>
+
+<div class="line">
+<span>Recommendation</span>
+<strong class="${cls}">
+${
+game.probability>=75
+?"STRONGER"
+:
+game.probability>=60
+?"MODERATE"
+:
+"AVOID"
+}
+</strong>
+</div>
+
+</div>
+
+`;
+
+});
+
+results.scrollIntoView({
+behavior:"smooth"
+});
+
+}
+
+
+clearButton.addEventListener("click",function(){
+
+imageInput.value="";
+
+selectedFile=null;
+
+preview.src="";
+
+preview.style.display="none";
+
+analyzeButton.style.display="none";
+
+results.style.display="none";
+
+progress.style.display="none";
+
+progressInner.style.width="0%";
+
+status.textContent="";
+
+});
+
+
+</script>
+
+</body>
+  </html>
