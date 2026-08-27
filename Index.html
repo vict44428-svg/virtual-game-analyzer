@@ -1,0 +1,470 @@
+<script>
+/* ============ ELEMENTS ============ */
+const imageInput = document.getElementById("imageInput");
+const preview = document.getElementById("preview");
+const analyzeButton = document.getElementById("analyzeButton");
+const clearButton = document.getElementById("clearButton");
+const status = document.getElementById("status");
+const progress = document.getElementById("progress");
+const progressInner = document.getElementById("progressInner");
+const summaryCard = document.getElementById("summaryCard");
+const predictionCard = document.getElementById("predictionCard");
+const predictions = document.getElementById("predictions");
+const rawCard = document.getElementById("rawCard");
+const rawText = document.getElementById("rawText");
+const gamesDetected = document.getElementById("gamesDetected");
+const oddsDetected = document.getElementById("oddsDetected");
+const strongPicks = document.getElementById("strongPicks");
+const avoidCount = document.getElementById("avoidCount");
+const pipeUpload = document.getElementById("pipeUpload");
+const pipeOCR = document.getElementById("pipeOCR");
+const pipeGames = document.getElementById("pipeGames");
+const pipeOdds = document.getElementById("pipeOdds");
+const pipeModel = document.getElementById("pipeModel");
+const pipeBacktest = document.getElementById("pipeBacktest");
+const historyGame = document.getElementById("historyGame");
+const historyResult = document.getElementById("historyResult");
+const saveHistory = document.getElementById("saveHistory");
+const backtestButton = document.getElementById("backtestButton");
+const clearHistory = document.getElementById("clearHistory");
+const backtestResult = document.getElementById("backtestResult");
+const historyList = document.getElementById("historyList");
+
+let selectedFile = null;
+let selectedImageData = null;
+let currentGames = [];
+
+/* ============ CHECK TESSERACT LOADING ============ */
+if (typeof Tesseract === 'undefined') {
+  status.textContent = "❌ OCR engine failed to load. Check your internet connection.";
+  analyzeButton.disabled = true;
+  console.error("Tesseract.js not loaded.");
+} else {
+  console.log("Tesseract.js loaded successfully.");
+}
+
+/* ============ IMAGE SELECTION (more robust) ============ */
+function handleFileSelection(file) {
+  if (!file) return;
+
+  if (!file.type || !file.type.startsWith("image/")) {
+    status.textContent = "❌ Please select an image file.";
+    analyzeButton.disabled = true;
+    return;
+  }
+
+  selectedFile = file;
+  status.textContent = "⏳ Loading screenshot...";
+  pipeUpload.textContent = "LOADING";
+  pipeUpload.className = "yellow";
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    selectedImageData = e.target.result;
+    preview.src = selectedImageData;
+    preview.style.display = "block";
+    analyzeButton.disabled = false;
+    status.textContent = "✅ Screenshot successfully received";
+    pipeUpload.textContent = "READY";
+    pipeUpload.className = "green";
+    console.log("Image loaded, button enabled.");
+  };
+  reader.onerror = function() {
+    selectedImageData = null;
+    preview.style.display = "none";
+    analyzeButton.disabled = true;
+    status.textContent = "❌ Could not read the screenshot.";
+    pipeUpload.textContent = "ERROR";
+    pipeUpload.className = "red";
+  };
+  reader.readAsDataURL(file);
+}
+
+// Listen to both change and input (for some Android browsers)
+imageInput.addEventListener("change", function(event) {
+  const file = event.target.files && event.target.files[0];
+  handleFileSelection(file);
+});
+imageInput.addEventListener("input", function(event) {
+  const file = event.target.files && event.target.files[0];
+  handleFileSelection(file);
+});
+
+/* ============ CLEAR BUTTON ============ */
+clearButton.addEventListener("click", function() {
+  selectedFile = null;
+  selectedImageData = null;
+  imageInput.value = "";
+  preview.style.display = "none";
+  analyzeButton.disabled = true;
+  status.textContent = "Waiting for screenshot...";
+  pipeUpload.textContent = "READY";
+  pipeUpload.className = "green";
+  summaryCard.classList.add("hidden");
+  predictionCard.classList.add("hidden");
+  rawCard.classList.add("hidden");
+  currentGames = [];
+});
+
+/* ============ ANALYZE BUTTON ============ */
+analyzeButton.addEventListener("click", async function() {
+  console.log("Analyze button clicked.");
+  if (typeof Tesseract === 'undefined') {
+    status.textContent = "❌ OCR engine not loaded. Please refresh the page.";
+    return;
+  }
+
+  if (!selectedFile || !selectedImageData) {
+    status.textContent = "❌ Please select a screenshot first.";
+    return;
+  }
+
+  analyzeButton.disabled = true;
+  progress.style.display = "block";
+  progressInner.style.width = "5%";
+  status.textContent = "🔎 Starting OCR...";
+  pipeOCR.textContent = "READING";
+  pipeOCR.className = "yellow";
+
+  try {
+    const result = await Tesseract.recognize(selectedImageData, "eng", {
+      logger: function(info) {
+        if (info.status === "recognizing text") {
+          const percent = Math.round((info.progress || 0) * 100);
+          progressInner.style.width = Math.max(5, percent) + "%";
+          status.textContent = "Reading screenshot: " + percent + "%";
+        }
+      }
+    });
+
+    const text = (result.data.text || "").trim();
+    rawText.textContent = text || "No readable text detected.";
+    rawCard.classList.remove("hidden");
+    pipeOCR.textContent = "COMPLETE";
+    pipeOCR.className = "green";
+
+    currentGames = detectGames(text);
+    currentGames = currentGames.map(game => analyzeGame(game));
+    displayPredictions(currentGames);
+
+    summaryCard.classList.remove("hidden");
+    predictionCard.classList.remove("hidden");
+
+    pipeGames.textContent = currentGames.length + " DETECTED";
+    pipeGames.className = "green";
+
+    const gamesWithOdds = currentGames.filter(game => game.odds.length >= 3).length;
+    pipeOdds.textContent = gamesWithOdds + " WITH ODDS";
+    pipeOdds.className = gamesWithOdds > 0 ? "green" : "yellow";
+
+    pipeModel.textContent = "COMPLETE";
+    pipeModel.className = "green";
+
+    status.textContent = "✅ Analysis complete.";
+  } catch (error) {
+    console.error("OCR ERROR:", error);
+    status.textContent = "❌ OCR failed. Try a clearer screenshot.";
+    pipeOCR.textContent = "ERROR";
+    pipeOCR.className = "red";
+  }
+
+  analyzeButton.disabled = false;
+});
+
+/* ============ GAME DETECTION ============ */
+function detectGames(text) {
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+  let games = [];
+
+  // METHOD 1: "Team A vs Team B"
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(/^(.+?)\s+(?:vs\.?|v)\s+(.+?)$/i);
+    if (match) {
+      const home = cleanTeam(match[1]);
+      const away = cleanTeam(match[2]);
+      if (isPossibleTeam(home) && isPossibleTeam(away)) {
+        games.push({ home: home, away: away, odds: findOdds(lines, i) });
+      }
+    }
+  }
+
+  // METHOD 2: consecutive lines
+  if (games.length === 0) {
+    for (let i = 0; i < lines.length - 1; i++) {
+      const home = cleanTeam(lines[i]);
+      const away = cleanTeam(lines[i + 1]);
+      if (isPossibleTeam(home) && isPossibleTeam(away)) {
+        games.push({ home: home, away: away, odds: findOdds(lines, i) });
+        i++;
+      }
+    }
+  }
+
+  // Deduplicate
+  const unique = [];
+  games.forEach(game => {
+    const key = normalize(game.home) + "|" + normalize(game.away);
+    if (!unique.some(item => normalize(item.home) + "|" + normalize(item.away) === key)) {
+      unique.push(game);
+    }
+  });
+
+  return unique.slice(0, 30);
+}
+
+/* ============ ODDS DETECTION ============ */
+function findOdds(lines, index) {
+  const values = [];
+  const start = Math.max(0, index - 2);
+  const end = Math.min(lines.length - 1, index + 6);
+
+  for (let i = start; i <= end; i++) {
+    const matches = lines[i].match(/\b\d+\.\d{1,3}\b/g);
+    if (!matches) continue;
+    matches.forEach(value => {
+      const n = parseFloat(value);
+      if (n >= 1.01 && n <= 100) values.push(n);
+    });
+  }
+
+  return [...new Set(values)].slice(0, 12);
+}
+
+/* ============ CLEAN TEAM ============ */
+function cleanTeam(text) {
+  return String(text)
+    .replace(/[|[\]{}]/g, "")
+    .replace(/\b\d+(?:\.\d+)?\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/* ============ NORMALIZE ============ */
+function normalize(text) {
+  return String(text).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/* ============ TEAM VALIDATION ============ */
+function isPossibleTeam(text) {
+  if (!text) return false;
+  if (text.length < 3) return false;
+  if (text.length > 60) return false;
+  if (!/[a-zA-Z]/.test(text)) return false;
+
+  const lower = text.toLowerCase();
+  const blocked = [
+    "sportybet", "virtual", "football", "market", "odds", "stake", "cashout",
+    "over", "under", "double chance", "correct score", "full time", "half time",
+    "login", "register", "home", "away"
+  ];
+  return !blocked.some(word => lower.includes(word));
+}
+
+/* ============ STATISTICAL ENGINE ============ */
+function analyzeGame(game) {
+  const odds = game.odds.slice(0, 3);
+  if (odds.length < 3) {
+    return { ...game, probabilities: [], fairOdds: [], recommendation: "INSUFFICIENT DATA", classification: "AVOID", confidence: 0 };
+  }
+
+  const inverse = odds.map(odd => 1 / odd);
+  const total = inverse.reduce((a, b) => a + b, 0);
+  const probabilities = inverse.map(value => (value / total) * 100);
+
+  let bestIndex = 0;
+  for (let i = 1; i < probabilities.length; i++) {
+    if (probabilities[i] > probabilities[bestIndex]) bestIndex = i;
+  }
+
+  const labels = ["HOME WIN", "DRAW", "AWAY WIN"];
+  const bestProbability = probabilities[bestIndex];
+
+  let classification, recommendation;
+  if (bestProbability >= 65) {
+    classification = "STRONGER SIGNAL";
+    recommendation = labels[bestIndex];
+  } else if (bestProbability >= 50) {
+    classification = "MODERATE SIGNAL";
+    recommendation = labels[bestIndex];
+  } else {
+    classification = "AVOID";
+    recommendation = "NO CLEAR EDGE";
+  }
+
+  return {
+    ...game,
+    probabilities: probabilities,
+    fairOdds: probabilities.map(p => 100 / p),
+    recommendation: recommendation,
+    classification: classification,
+    confidence: Math.round(bestProbability)
+  };
+}
+
+/* ============ DISPLAY PREDICTIONS ============ */
+function displayPredictions(list) {
+  predictions.innerHTML = "";
+  let strong = 0, avoid = 0, withOdds = 0;
+
+  if (list.length === 0) {
+    predictions.innerHTML = `
+      <div class="empty">
+        ⚠️ No reliable games detected.<br><br>
+        Make sure the screenshot clearly shows the team names and odds.
+      </div>
+    `;
+    gamesDetected.textContent = "0";
+    oddsDetected.textContent = "0";
+    strongPicks.textContent = "0";
+    avoidCount.textContent = "0";
+    return;
+  }
+
+  list.forEach((game, index) => {
+    if (game.odds.length >= 3) withOdds++;
+    if (game.classification === "STRONGER SIGNAL") strong++;
+    if (game.classification === "AVOID") avoid++;
+    predictions.innerHTML += createPredictionCard(game, index + 1);
+  });
+
+  gamesDetected.textContent = list.length;
+  oddsDetected.textContent = withOdds;
+  strongPicks.textContent = strong;
+  avoidCount.textContent = avoid;
+}
+
+/* ============ CREATE PREDICTION CARD ============ */
+function createPredictionCard(game, number) {
+  let oddsHTML = "";
+  const labels = ["1", "X", "2"];
+
+  game.odds.slice(0, 3).forEach((odd, index) => {
+    oddsHTML += `
+      <div class="odd">
+        <div class="oddLabel">${labels[index]}</div>
+        <div class="oddValue">${odd.toFixed(2)}</div>
+      </div>
+    `;
+  });
+
+  if (!oddsHTML) {
+    oddsHTML = `
+      <div style="grid-column:1/-1; text-align:center; color:#8195aa; padding:12px;">
+        No 1X2 odds detected.
+      </div>
+    `;
+  }
+
+  let probabilityHTML = "";
+  if (game.probabilities && game.probabilities.length >= 3) {
+    probabilityHTML = `
+      <div class="scoreGrid">
+        <div class="score"><span>HOME</span><strong>${game.probabilities[0].toFixed(1)}%</strong></div>
+        <div class="score"><span>DRAW</span><strong>${game.probabilities[1].toFixed(1)}%</strong></div>
+        <div class="score"><span>AWAY</span><strong>${game.probabilities[2].toFixed(1)}%</strong></div>
+      </div>
+    `;
+  }
+
+  const badgeClass = game.classification === "STRONGER SIGNAL" ? "badge" : 
+                     game.classification === "AVOID" ? "badgeAvoid" : "badge";
+  const recColor = game.classification === "STRONGER SIGNAL" ? "green" :
+                   game.classification === "AVOID" ? "red" : "yellow";
+
+  return `
+    <div class="game">
+      <div class="gameHeader">
+        <div>
+          <div class="gameNumber">GAME ${number}</div>
+          <div class="teams">${game.home} <span class="vs">vs</span> ${game.away}</div>
+        </div>
+        <span class="${badgeClass}">${game.classification}</span>
+      </div>
+      <div class="odds">${oddsHTML}</div>
+      ${probabilityHTML}
+      <div class="prediction">
+        <div class="small">RECOMMENDATION</div>
+        <div class="predictionMain ${recColor}">${game.recommendation}</div>
+        <div class="small" style="margin-top:8px">CONFIDENCE: <span class="confidence">${game.confidence}%</span></div>
+      </div>
+    </div>
+  `;
+}
+
+/* ============ HISTORY FUNCTIONS ============ */
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem("virtualAIHistory") || "[]");
+  historyList.innerHTML = "";
+  if (history.length === 0) {
+    historyList.innerHTML = '<div class="empty">No historical results saved yet.</div>';
+    return;
+  }
+  history.forEach((item) => {
+    const div = document.createElement("div");
+    div.className = "historyItem";
+    div.innerHTML = `
+      <strong>${item.game}</strong> — ${item.result === "1" ? "Home Win" : item.result === "X" ? "Draw" : "Away Win"}
+      <span class="small"> (${new Date(item.timestamp).toLocaleDateString()})</span>
+    `;
+    historyList.appendChild(div);
+  });
+}
+
+saveHistory.addEventListener("click", function() {
+  const gameName = historyGame.value.trim();
+  if (!gameName) {
+    alert("Please enter a game name.");
+    return;
+  }
+  const entry = {
+    game: gameName,
+    result: historyResult.value,
+    timestamp: new Date().toISOString()
+  };
+
+  let history = JSON.parse(localStorage.getItem("virtualAIHistory") || "[]");
+  history.push(entry);
+  localStorage.setItem("virtualAIHistory", JSON.stringify(history));
+  historyGame.value = "";
+  renderHistory();
+});
+
+backtestButton.addEventListener("click", function() {
+  const history = JSON.parse(localStorage.getItem("virtualAIHistory") || "[]");
+  if (history.length === 0) {
+    backtestResult.textContent = "No historical data to backtest.";
+    backtestResult.className = "prediction red";
+    backtestResult.classList.remove("hidden");
+    return;
+  }
+
+  let homeWins = 0, draws = 0, awayWins = 0;
+  history.forEach(item => {
+    if (item.result === "1") homeWins++;
+    else if (item.result === "X") draws++;
+    else awayWins++;
+  });
+
+  const total = history.length;
+  backtestResult.innerHTML = `
+    <div class="small">BACKTEST SUMMARY</div>
+    <div class="predictionMain green">
+      Home: ${((homeWins/total)*100).toFixed(1)}% |
+      Draw: ${((draws/total)*100).toFixed(1)}% |
+      Away: ${((awayWins/total)*100).toFixed(1)}%
+    </div>
+  `;
+  backtestResult.classList.remove("hidden");
+});
+
+clearHistory.addEventListener("click", function() {
+  if (confirm("Delete all historical results?")) {
+    localStorage.removeItem("virtualAIHistory");
+    renderHistory();
+  }
+});
+
+// Initialize history on page load
+renderHistory();
+  </script>
