@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtual Game Analyzer</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #07111f;
+  color: #fff;
+}
+
+.container {
+  width: 100%;
+  max-width: 700px;
+  margin: auto;
+  padding: 18px;
+}
+
+.header {
+  text-align: center;
+  padding: 25px 10px;
+}
+
+.logo {
+  font-size: 34px;
+  font-weight: 900;
+}
+
+.logo span {
+  color: #00e676;
+}
+
+.subtitle {
+  color: #9fb0c3;
+  margin-top: 8px;
+}
+
+.card {
+  background: #101d2d;
+  border: 1px solid #1d3047;
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.upload {
+  border: 2px dashed #38516c;
+  border-radius: 15px;
+  padding: 28px 15px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.upload:hover {
+  border-color: #00e676;
+}
+
+.upload-icon {
+  font-size: 42px;
+}
+
+input[type=file] {
+  display: none;
+}
+
+button {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 15px;
+  margin-top: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.analyze {
+  background: #00e676;
+  color: #001b0d;
+}
+
+.analyze:disabled {
+  background: #40504a;
+  color: #a9b5ae;
+}
+
+.clear {
+  background: #26384d;
+  color: white;
+}
+
+#preview {
+  width: 100%;
+  border-radius: 12px;
+  margin-top: 15px;
+  display: none;
+}
+
+.progress {
+  margin-top: 15px;
+  color: #9fb0c3;
+  font-size: 14px;
+}
+
+.progressbar {
+  height: 8px;
+  background: #26384d;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.progressbar div {
+  height: 100%;
+  width: 0%;
+  background: #00e676;
+  transition: width .3s;
+}
+
+.game {
+  background: #0b1726;
+  border: 1px solid #263b52;
+  border-radius: 15px;
+  padding: 16px;
+  margin-top: 13px;
+}
+
+.game-title {
+  font-weight: bold;
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+
+.market {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #1d2d40;
+}
+
+.market:last-child {
+  border-bottom: 0;
+}
+
+.green {
+  color: #00e676;
+  font-weight: bold;
+}
+
+.yellow {
+  color: #ffd54f;
+  font-weight: bold;
+}
+
+.red {
+  color: #ff5252;
+  font-weight: bold;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: #143322;
+  color: #00e676;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.warning {
+  background: #321b1b;
+  color: #ff8a80;
+  padding: 12px;
+  border-radius: 10px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.hidden {
+  display: none;
+}
+
+#results h2 {
+  margin-top: 0;
+}
+
+.small {
+  color: #8295aa;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ocrText {
+  white-space: pre-wrap;
+  background: #07111f;
+  border-radius: 10px;
+  padding: 12px;
+  max-height: 250px;
+  overflow: auto;
+  font-size: 12px;
+  color: #b9c7d5;
+}
+
+.footer {
+  text-align: center;
+  color: #60758b;
+  font-size: 12px;
+  padding: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <div class="logo">VIRTUAL<span>AI</span></div>
+    <div class="subtitle">
+      Virtual Game Screenshot Analyzer
+    </div>
+  </div>
+
+  <div class="card">
+
+    <label class="upload" for="imageInput">
+      <div class="upload-icon">📸</div>
+      <h3>Upload SportyBet Screenshot</h3>
+      <div class="small">
+        Select a screenshot containing virtual games and odds.
+      </div>
+    </label>
+
+    <input id="imageInput" type="file" accept="image/*">
+
+    <img id="preview">
+
+    <button class="analyze" id="analyzeBtn" disabled>
+      🔍 ANALYZE GAMES
+    </button>
+
+    <button class="clear" id="clearBtn">
+      🗑️ CLEAR
+    </button>
+
+    <div class="progress hidden" id="progressBox">
+      <div id="progressText">Preparing OCR...</div>
+      <div class="progressbar">
+        <div id="progressBar"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card hidden" id="results">
+    <h2>🏆 Analysis Results</h2>
+
+    <div id="summary"></div>
+
+    <div id="games"></div>
+
+    <div class="warning">
+      ⚠️ These are statistical estimates, not guaranteed results.
+      Virtual games may be generated using random systems, so no
+      screenshot can reveal or guarantee the next outcome.
+    </div>
+
+  </div>
+
+  <div class="card hidden" id="rawCard">
+    <h3>🔎 Text detected from screenshot</h3>
+    <div class="ocrText" id="ocrText"></div>
+  </div>
+
+  <div class="footer">
+    VirtualAI • Statistical analysis only
+  </div>
+
+</div>
+
+<script>
+
+const imageInput = document.getElementById("imageInput");
+const preview = document.getElementById("preview");
+const analyzeBtn = document.getElementById("analyzeBtn");
+const clearBtn = document.getElementById("clearBtn");
+
+const progressBox = document.getElementById("progressBox");
+const progressText = document.getElementById("progressText");
+const progressBar = document.getElementById("progressBar");
+
+const results = document.getElementById("results");
+const gamesBox = document.getElementById("games");
+const summary = document.getElementById("summary");
+
+const rawCard = document.getElementById("rawCard");
+const ocrText = document.getElementById("ocrText");
+
+let selectedImage = null;
+
+imageInput.addEventListener("change", function(e) {
+
+  const file = e.target.files[0];
+
+  if (!file) return;
+
+  selectedImage = file;
+
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = "block";
+
+  analyzeBtn.disabled = false;
+
+  results.classList.add("hidden");
+  rawCard.classList.add("hidden");
+
+});
+
+clearBtn.addEventListener("click", function() {
+
+  imageInput.value = "";
+  selectedImage = null;
+
+  preview.src = "";
+  preview.style.display = "none";
+
+  analyzeBtn.disabled = true;
+
+  results.classList.add("hidden");
+  rawCard.classList.add("hidden");
+
+  progressBox.classList.add("hidden");
+
+  gamesBox.innerHTML = "";
+  summary.innerHTML = "";
+
+});
+
+analyzeBtn.addEventListener("click", analyzeScreenshot);
+
+
+async function analyzeScreenshot() {
+
+  if (!selectedImage) return;
+
+  analyzeBtn.disabled = true;
+  progressBox.classList.remove("hidden");
+
+  progressText.textContent = "Reading screenshot...";
+  progressBar.style.width = "5%";
+
+  try {
+
+    const result = await Tesseract.recognize(
+      selectedImage,
+      "eng",
+      {
+        logger: function(info) {
+
+          if (info.status === "recognizing text") {
+
+            const percent = Math.round(info.progress * 100);
+
+            progressText.textContent =
+              "Reading text: " + percent + "%";
+
+            progressBar.style.width =
+              Math.max(5, percent) + "%";
+          }
+
+        }
+      }
+    );
+
+    const text = result.data.text;
+
+    progressBar.style.width = "100%";
+    progressText.textContent = "Analysis complete.";
+
+    ocrText.textContent = text || "No readable text found.";
+
+    rawCard.classList.remove("hidden");
+
+    const games = extractGames(text);
+
+    displayResults(games);
+
+  } catch(error) {
+
+    console.error(error);
+
+    alert(
+      "Could not analyze the screenshot. Try a clearer screenshot."
+    );
+
+  }
+
+  analyzeBtn.disabled = false;
+
+}
+
+
+function extractGames(text) {
+
+  const lines = text
+    .split("\n")
+    .map(x => x.trim())
+    .filter(x => x.length > 2);
+
+  const games = [];
+
+  /*
+    Look for football-style team lines.
+
+    OCR is imperfect, so this is intentionally flexible
