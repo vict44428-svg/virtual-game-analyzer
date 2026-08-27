@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VirtualAI</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#06111f;color:#fff}
+.container{max-width:850px;margin:auto;padding:16px}
+.header{text-align:center;padding:24px 5px}
+.logo{font-size:42px;font-weight:900}
+.logo span{color:#00e676}
+.subtitle{color:#91a4b8;margin-top:7px}
+.card{background:#0e1c2b;border:1px solid #233b53;border-radius:18px;padding:18px;margin-bottom:16px}
+.upload{text-align:center;border:2px dashed #00e676;border-radius:15px;padding:25px 15px}
+.icon{font-size:48px}
+.title{font-size:20px;font-weight:bold;margin-top:8px}
+.info{color:#91a4b8;font-size:14px;line-height:1.5;margin-top:8px}
+.fileBox{margin-top:18px;background:#15283b;border:1px solid #35516d;border-radius:12px;padding:12px}
+input[type=file]{width:100%;color:white;font-size:14px}
+#preview{display:none;width:100%;max-height:600px;object-fit:contain;margin-top:18px;border-radius:12px;background:#000}
+button{width:100%;padding:15px;border:0;border-radius:12px;font-size:15px;font-weight:bold;margin-top:12px;cursor:pointer}
+.analyze{background:#00e676;color:#00180b}
+.analyze:disabled{background:#40504b;color:#aab6b1}
+.secondary{background:#263c53;color:white}
+.danger{background:#542631;color:white}
+.status{text-align:center;color:#9eb1c5;margin-top:12px;font-size:14px}
+.progress{height:8px;background:#25394e;border-radius:20px;overflow:hidden;margin-top:12px;display:none}
+.progressInner{height:100%;width:0%;background:#00e676;transition:width .25s}
+.hidden{display:none!important}
+.row{display:flex;justify-content:space-between;gap:15px;padding:11px 0;border-bottom:1px solid #1c3043}
+.row:last-child{border-bottom:0}
+.game{background:#091623;border:1px solid #253e57;border-radius:15px;padding:16px;margin-top:13px}
+.gameHeader{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.gameNumber{color:#71869c;font-size:12px;margin-bottom:5px}
+.teams{font-size:18px;font-weight:bold;line-height:1.5}
+.vs{font-size:12px;color:#71869c}
+.badge{padding:6px 9px;border-radius:20px;font-size:11px;font-weight:bold;background:#173c2a;color:#00e676}
+.badgeAvoid{background:#402126;color:#ff7887}
+.odds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.odd{background:#101f2e;border:1px solid #29445d;border-radius:10px;padding:10px;text-align:center}
+.oddLabel{font-size:11px;color:#8195aa}
+.oddValue{font-size:19px;font-weight:bold;color:#00e676;margin-top:4px}
+.prediction{margin-top:15px;padding:15px;background:#102537;border-radius:12px}
+.predictionMain{font-size:22px;font-weight:bold;margin-top:5px}
+.green{color:#00e676}
+.yellow{color:#ffd740}
+.red{color:#ff6675}
+.confidence{font-size:21px;font-weight:bold}
+.scoreGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.score{background:#101f2e;border-radius:10px;padding:10px;text-align:center}
+.score span{font-size:11px;color:#8195aa}
+.score strong{display:block;font-size:18px;margin-top:4px}
+.raw{white-space:pre-wrap;background:#06111f;border:1px solid #20364c;padding:14px;border-radius:12px;font-size:12px;line-height:1.6;color:#c9d5df;max-height:350px;overflow:auto}
+.warning{background:#321c21;color:#ffadb3;padding:13px;border-radius:10px;font-size:12px;line-height:1.6;margin-top:15px}
+.note{color:#91a4b8;font-size:12px;line-height:1.6}
+.statGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:#091623;border:1px solid #253e57;border-radius:12px;padding:15px;text-align:center}
+.statValue{font-size:25px;font-weight:bold;color:#00e676}
+.statLabel{font-size:11px;color:#8195aa;margin-top:5px}
+input[type=text],input[type=number],select{width:100%;padding:13px;background:#15283b;border:1px solid #35516d;color:white;border-radius:10px;margin-top:8px}
+.historyItem{background:#091623;border:1px solid #253e57;border-radius:12px;padding:12px;margin-top:10px;font-size:13px}
+.empty{text-align:center;padding:20px;color:#91a4b8}
+.small{font-size:11px;color:#71869c}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="logo">VIRTUAL<span>AI</span></div>
+    <div class="subtitle">Virtual Game Statistical Analyzer</div>
+  </div>
+
+  <!-- UPLOAD CARD -->
+  <div class="card">
+    <div class="upload">
+      <div class="icon">📸</div>
+      <div class="title">Upload Virtual Game Screenshot</div>
+      <div class="info">Select a screenshot from your phone. The image should appear below immediately.</div>
+      <div class="fileBox">
+        <input id="imageInput" type="file" accept="image/*">
+      </div>
+      <img id="preview" alt="Selected screenshot">
+      <button id="analyzeButton" class="analyze" disabled>🔍 ANALYZE SCREENSHOT</button>
+      <button id="clearButton" class="secondary">🗑️ CLEAR</button>
+      <div id="status" class="status">Waiting for screenshot...</div>
+      <div id="progress" class="progress">
+        <div id="progressInner" class="progressInner"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY CARD -->
+  <div id="summaryCard" class="card hidden">
+    <h2>📊 Analysis Summary</h2>
+    <div class="statGrid">
+      <div class="stat"><div id="gamesDetected" class="statValue">0</div><div class="statLabel">GAMES DETECTED</div></div>
+      <div class="stat"><div id="oddsDetected" class="statValue">0</div><div class="statLabel">GAMES WITH ODDS</div></div>
+      <div class="stat"><div id="strongPicks" class="statValue">0</div><div class="statLabel">STRONGER SIGNALS</div></div>
+      <div class="stat"><div id="avoidCount" class="statValue">0</div><div class="statLabel">AVOID / UNCERTAIN</div></div>
+    </div>
+  </div>
+
+  <!-- PREDICTIONS CARD -->
+  <div id="predictionCard" class="card hidden">
+    <h2>🎯 Statistical Analysis</h2>
+    <div id="predictions"></div>
+  </div>
+
+  <!-- OCR RAW CARD -->
+  <div id="rawCard" class="card hidden">
+    <h3>📝 OCR Text</h3>
+    <div id="rawText" class="raw"></div>
+  </div>
+
+  <!-- HISTORY CARD -->
+  <div class="card">
+    <h2>🗄️ Historical Results</h2>
+    <p class="note">You can manually save previous results. They remain stored locally on this device and are used for basic backtesting.</p>
+    <label>Game / Match</label>
+    <input id="historyGame" type="text" placeholder="Example: Team A vs Team B">
+    <label>Actual result</label>
+    <select id="historyResult">
+      <option value="1">Home Win</option>
+      <option value="X">Draw</option>
+      <option value="2">Away Win</option>
+    </select>
+    <button id="saveHistory" class="analyze">💾 SAVE RESULT</button>
+    <button id="backtestButton" class="secondary">📈 RUN BACKTEST</button>
+    <div id="backtestResult" class="prediction hidden"></div>
+    <div id="historyList"></div>
+    <button id="clearHistory" class="danger">🗑️ DELETE HISTORY</button>
+  </div>
+
+  <!-- PIPELINE CARD -->
+  <div class="card">
+    <h3>🚀 System Pipeline</h3>
+    <div class="row"><span>1. Screenshot upload</span><strong id="pipeUpload" class="green">READY</strong></div>
+    <div class="row"><span>2. OCR</span><strong id="pipeOCR">READY</strong></div>
+    <div class="row"><span>3. Game detection</span><strong id="pipeGames">READY</strong></div>
+    <div class="row"><span>4. Odds extraction</span><strong id="pipeOdds">READY</strong></div>
+    <div class="row"><span>5. Statistical model</span><strong id="pipeModel">READY</strong></div>
+    <div class="row"><span>6. Backtesting</span><strong id="pipeBacktest">READY</strong></div>
+  </div>
+
+  <div class="card">
+    <div class="warning">
+      <strong>Important:</strong> This system analyzes visible screenshot information and historical data. It cannot access SportyBet's private RNG or internal algorithm, and predictions cannot be guaranteed.
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ ELEMENTS ============ */
+const imageInput = document.getElementById("imageInput");
+const preview = document.getElementById("preview");
+const analyzeButton = document.getElementById("analyzeButton");
+const clearButton = document.getElementById("clearButton");
+const status = document.getElementById("status");
+const progress = document.getElementById("progress");
+const progressInner = document.getElementById("progressInner");
+const summaryCard = document.getElementById("summaryCard");
+const predictionCard = document.getElementById("predictionCard");
+const predictions = document.getElementById("predictions");
+const rawCard = document.getElementById("rawCard");
+const rawText = document.getElementById("rawText");
+const gamesDetected = document.getElementById("gamesDetected");
+const oddsDetected = document.getElementById("oddsDetected");
+const strongPicks = document.getElementById("strongPicks");
+const avoidCount = document.getElementById("avoidCount");
+const pipeUpload = document.getElementById("pipeUpload");
+const pipeOCR = document.getElementById("pipeOCR");
+const pipeGames = document.getElementById("pipeGames");
+const pipeOdds = document.getElementById("pipeOdds");
+const pipeModel = document.getElementById("pipeModel");
+const pipeBacktest = document.getElementById("pipeBacktest");
+const historyGame = document.getElementById("historyGame");
+const historyResult = document.getElementById("historyResult");
+const saveHistory = document.getElementById("saveHistory");
+const backtestButton = document.getElementById("backtestButton");
+const clearHistory = document.getElementById("clearHistory");
+const backtestResult = document.getElementById("backtestResult");
+const historyList = document.getElementById("historyList");
+
+let selectedFile = null;
+let selectedImageData = null;
+let currentGames = [];
+
+/* ============ IMAGE SELECTION ============ */
+imageInput.addEventListener("change", function(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  if (!file.type || !file.type.startsWith("image/")) {
+    status.textContent = "❌ Please select an image file.";
+    analyzeButton.disabled = true;
+    return;
+  }
+
+  selectedFile = file;
+  status.textContent = "⏳ Loading screenshot...";
+  pipeUpload.textContent = "LOADING";
+  pipeUpload.className = "yellow";
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    selectedImageData = e.target.result;
+    preview.src = selectedImageData;
+    preview.style.display = "block";
+    analyzeButton.disabled = false;
+    status.textContent = "✅ Screenshot successfully received";
+    pipeUpload.textContent = "READY";
+    pipeUpload.className = "green";
+  };
+  reader.onerror = function() {
+    selectedImageData = null;
+    preview.style.display = "none";
+    analyzeButton.disabled = true;
+    status.textContent = "❌ Could not read the screenshot.";
+    pipeUpload.textContent = "ERROR";
+    pipeUpload.className = "red";
+  };
+  reader.readAsDataURL(file);
+});
+
+/* ============ CLEAR BUTTON ============ */
+clearButton.addEventListener("click", function() {
+  selectedFile = null;
+  selectedImageData = null;
+  imageInput.value = "";
+  preview.style.display = "none";
+  analyzeButton.disabled = true;
+  status.textContent = "Waiting for screenshot...";
+  pipeUpload.textContent = "READY";
+  pipeUpload.className = "green";
+  summaryCard.classList.add("hidden");
+  predictionCard.classList.add("hidden");
+  rawCard.classList.add("hidden");
+  currentGames = [];
+});
+
+/* ============ ANALYZE BUTTON ============ */
+analyzeButton.addEventListener("click", async function() {
+  if (!selectedFile || !selectedImageData) {
+    status.textContent = "❌ Please select a screenshot.";
+    return;
+  }
+
+  analyzeButton.disabled = true;
+  progress.style.display = "block";
+  progressInner.style.width = "5%";
+  status.textContent = "🔎 Starting OCR...";
+  pipeOCR.textContent = "READING";
+  pipeOCR.className = "yellow";
+
+  try {
+    const result = await Tesseract.recognize(selectedImageData, "eng", {
+      logger: function(info) {
+        if (info.status === "recognizing text") {
+          const percent = Math.round((info.progress || 0) * 100);
+          progressInner.style.width = Math.max(5, percent) + "%";
+          status.textContent = "Reading screenshot: " + percent + "%";
+        }
+      }
+    });
+
+    const text = (result.data.text || "").trim();
+    rawText.textContent = text || "No readable text detected.";
+    rawCard.classList.remove("hidden");
+    pipeOCR.textContent = "COMPLETE";
+    pipeOCR.className = "green";
+
+    currentGames = detectGames(text);
+    currentGames = currentGames.map(game => analyzeGame(game));
+    displayPredictions(currentGames);
+
+    summaryCard.classList.remove("hidden");
+    predictionCard.classList.remove("hidden");
+
+    pipeGames.textContent = currentGames.length + " DETECTED";
+    pipeGames.className = "green";
+
+    const gamesWithOdds = currentGames.filter(game => game.odds.length >= 3).length;
+    pipeOdds.textContent = gamesWithOdds + " WITH ODDS";
+    pipeOdds.className = gamesWithOdds > 0 ? "green" : "yellow";
+
+    pipeModel.textContent = "COMPLETE";
+    pipeModel.className = "green";
+
+    status.textContent = "✅ Analysis complete.";
+  } catch (error) {
+    console.error("OCR ERROR:", error);
+    status.textContent = "❌ OCR failed. Try a clearer screenshot.";
+    pipeOCR.textContent = "ERROR";
+    pipeOCR.className = "red";
+  }
+
+  analyzeButton.disabled = false;
+});
+
+/* ============ GAME DETECTION ============ */
+function detectGames(text) {
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+  let games = [];
+
+  // METHOD 1: "Team A vs Team B"
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(/^(.+?)\s+(?:vs\.?|v)\s+(.+?)$/i);
+    if (match) {
+      const home = cleanTeam(match[1]);
+      const away = cleanTeam(match[2]);
+      if (isPossibleTeam(home) && isPossibleTeam(away)) {
+        games.push({ home: home, away: away, odds: findOdds(lines, i) });
+      }
+    }
+  }
+
+  // METHOD 2: consecutive lines
+  if (games.length === 0) {
+    for (let i = 0; i < lines.length - 1; i++) {
+      const home = cleanTeam(lines[i]);
+      const away = cleanTeam(lines[i + 1]);
+      if (isPossibleTeam(home) && isPossibleTeam(away)) {
+        games.push({ home: home, away: away, odds: findOdds(lines, i) });
+        i++;
+      }
+    }
+  }
+
+  // Deduplicate
+  const unique = [];
+  games.forEach(game => {
+    const key = normalize(game.home) + "|" + normalize(game.away);
+    if (!unique.some(item => normalize(item.home) + "|" + normalize(item.away) === key)) {
+      unique.push(game);
+    }
+  });
+
+  return unique.slice(0, 30);
+}
+
+/* ============ ODDS DETECTION ============ */
+function findOdds(lines, index) {
+  const values = [];
+  const start = Math.max(0, index - 2);
+  const end = Math.min(lines.length - 1, index + 6);
+
+  for (let i = start; i <= end; i++) {
+    const matches = lines[i].match(/\b\d+\.\d{1,3}\b/g);
+    if (!matches) continue;
+    matches.forEach(value => {
+      const n = parseFloat(value);
+      if (n >= 1.01 && n <= 100) values.push(n);
+    });
+  }
+
+  return [...new Set(values)].slice(0, 12);
+}
+
+/* ============ CLEAN TEAM ============ */
+function cleanTeam(text) {
+  return String(text)
+    .replace(/[|[\]{}]/g, "")
+    .replace(/\b\d+(?:\.\d+)?\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/* ============ NORMALIZE ============ */
+function normalize(text) {
+  return String(text).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/* ============ TEAM VALIDATION ============ */
+function isPossibleTeam(text) {
+  if (!text) return false;
+  if (text.length < 3) return false;
+  if (text.length > 60) return false;
+  if (!/[a-zA-Z]/.test(text)) return false;
+
+  const lower = text.toLowerCase();
+  const blocked = [
+    "sportybet", "virtual", "football", "market", "odds", "stake", "cashout",
+    "over", "under", "double chance", "correct score", "full time", "half time",
+    "login", "register", "home", "away"
+  ];
+  return !blocked.some(word => lower.includes(word));
+}
+
+/* ============ STATISTICAL ENGINE ============ */
+function analyzeGame(game) {
+  const odds = game.odds.slice(0, 3);
+  if (odds.length < 3) {
+    return { ...game, probabilities: [], fairOdds: [], recommendation: "INSUFFICIENT DATA", classification: "AVOID", confidence: 0 };
+  }
+
+  const inverse = odds.map(odd => 1 / odd);
+  const total = inverse.reduce((a, b) => a + b, 0);
+  const probabilities = inverse.map(value => (value / total) * 100);
+
+  let bestIndex = 0;
+  for (let i = 1; i < probabilities.length; i++) {
+    if (probabilities[i] > probabilities[bestIndex]) bestIndex = i;
+  }
+
+  const labels = ["HOME WIN", "DRAW", "AWAY WIN"];
+  const bestProbability = probabilities[bestIndex];
+
+  let classification, recommendation;
+  if (bestProbability >= 65) {
+    classification = "STRONGER SIGNAL";
+    recommendation = labels[bestIndex];
+  } else if (bestProbability >= 50) {
+    classification = "MODERATE SIGNAL";
+    recommendation = labels[bestIndex];
+  } else {
+    classification = "AVOID";
+    recommendation = "NO CLEAR EDGE";
+  }
+
+  return {
+    ...game,
+    probabilities: probabilities,
+    fairOdds: probabilities.map(p => 100 / p),
+    recommendation: recommendation,
+    classification: classification,
+    confidence: Math.round(bestProbability)
+  };
+}
+
+/* ============ DISPLAY PREDICTIONS ============ */
+function displayPredictions(list) {
+  predictions.innerHTML = "";
+  let strong = 0, avoid = 0, withOdds = 0;
+
+  if (list.length === 0) {
+    predictions.innerHTML = `
+      <div class="empty">
+        ⚠️ No reliable games detected.<br><br>
+        Make sure the screenshot clearly shows the team names and odds.
+      </div>
+    `;
+    gamesDetected.textContent = "0";
+    oddsDetected.textContent = "0";
+    strongPicks.textContent = "0";
+    avoidCount.textContent = "0";
+    return;
+  }
+
+  list.forEach((game, index) => {
+    if (game.odds.length >= 3) withOdds++;
+    if (game.classification === "STRONGER SIGNAL") strong++;
+    if (game.classification === "AVOID") avoid++;
+    predictions.innerHTML += createPredictionCard(game, index + 1);
+  });
+
+  gamesDetected.textContent = list.length;
+  oddsDetected.textContent = withOdds;
+  strongPicks.textContent = strong;
+  avoidCount.textContent = avoid;
+}
+
+/* ============ CREATE PREDICTION CARD ============ */
+function createPredictionCard(game, number) {
+  let oddsHTML = "";
+  const labels = ["1", "X", "2"];
+
+  game.odds.slice(0, 3).forEach((odd, index) => {
+    oddsHTML += `
+      <div class="odd">
+        <div class="oddLabel">${labels[index]}</div>
+        <div class="oddValue">${odd.toFixed(2)}</div>
+      </div>
+    `;
+  });
+
+  if (!oddsHTML) {
+    oddsHTML = `
+      <div style="grid-column:1/-1; text-align:center; color:#8195aa; padding:12px;">
+        No 1X2 odds detected.
+      </div>
+    `;
+  }
+
+  let probabilityHTML = "";
+  if (game.probabilities && game.probabilities.length >= 3) {
+    probabilityHTML = `
+      <div class="scoreGrid">
+        <div class="score"><span>HOME</span><strong>${game.probabilities[0].toFixed(1)}%</strong></div>
+        <div class="score"><span>DRAW</span><strong>${game.probabilities[1].toFixed(1)}%</strong></div>
+        <div class="score"><span>AWAY</span><strong>${game.probabilities[2].toFixed(1)}%</strong></div>
+      </div>
+    `;
+  }
+
+  const badgeClass = game.classification === "STRONGER SIGNAL" ? "badge" : 
+                     game.classification === "AVOID" ? "badgeAvoid" : "badge";
+  const recColor = game.classification === "STRONGER SIGNAL" ? "green" :
+                   game.classification === "AVOID" ? "red" : "yellow";
+
+  return `
+    <div class="game">
+      <div class="gameHeader">
+        <div>
+          <div class="gameNumber">GAME ${number}</div>
+          <div class="teams">${game.home} <span class="vs">vs</span> ${game.away}</div>
+        </div>
+        <span class="${badgeClass}">${game.classification}</span>
+      </div>
+      <div class="odds">${oddsHTML}</div>
+      ${probab
