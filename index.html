@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>VirtualAI Game Analyzer</title>
+
+<!-- OCR ENGINE -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<style>
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    background:#06111f;
+    color:#fff;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+.container{
+    max-width:850px;
+    margin:auto;
+    padding:16px;
+}
+
+.header{
+    text-align:center;
+    padding:20px 0;
+}
+
+.logo{
+    font-size:38px;
+    font-weight:900;
+}
+
+.logo span{
+    color:#00e676;
+}
+
+.subtitle{
+    color:#91a4b7;
+    font-size:14px;
+    margin-top:6px;
+}
+
+.card{
+    background:#0d1b2a;
+    border:1px solid #233b53;
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:16px;
+}
+
+.uploadBox{
+    border:2px dashed #00e676;
+    border-radius:16px;
+    padding:24px 14px;
+    text-align:center;
+}
+
+.uploadIcon{
+    font-size:48px;
+}
+
+.uploadTitle{
+    font-size:21px;
+    font-weight:bold;
+    margin:10px 0 6px;
+}
+
+.uploadInfo{
+    color:#8fa3b7;
+    font-size:13px;
+    line-height:1.5;
+}
+
+.uploadLabel{
+    display:block;
+    background:#00e676;
+    color:#001b0b;
+    font-weight:bold;
+    padding:15px;
+    border-radius:12px;
+    margin-top:18px;
+    cursor:pointer;
+}
+
+#imageInput{
+    display:none;
+}
+
+.previewBox{
+    display:none;
+    margin-top:18px;
+    background:#000;
+    border-radius:12px;
+    padding:8px;
+}
+
+#preview{
+    width:100%;
+    max-height:500px;
+    display:block;
+    object-fit:contain;
+    border-radius:8px;
+}
+
+button{
+    width:100%;
+    border:0;
+    border-radius:12px;
+    padding:15px;
+    margin-top:12px;
+    font-size:15px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.analyzeButton{
+    background:#00e676;
+    color:#001b0b;
+}
+
+.analyzeButton:disabled{
+    background:#34443d;
+    color:#9ba9a4;
+    cursor:not-allowed;
+}
+
+.clearButton{
+    background:#263d52;
+    color:#fff;
+}
+
+.status{
+    text-align:center;
+    margin-top:13px;
+    color:#9eb1c5;
+    font-size:14px;
+}
+
+.progress{
+    display:none;
+    width:100%;
+    height:8px;
+    background:#24384c;
+    border-radius:20px;
+    margin-top:12px;
+    overflow:hidden;
+}
+
+.progressInner{
+    width:0%;
+    height:100%;
+    background:#00e676;
+    transition:width .2s;
+}
+
+.statGrid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+}
+
+.stat{
+    background:#091623;
+    border:1px solid #253e57;
+    border-radius:12px;
+    padding:15px;
+    text-align:center;
+}
+
+.statValue{
+    font-size:27px;
+    font-weight:bold;
+    color:#00e676;
+}
+
+.statLabel{
+    margin-top:5px;
+    color:#8296aa;
+    font-size:11px;
+}
+
+.game{
+    background:#091623;
+    border:1px solid #29435d;
+    border-radius:15px;
+    padding:15px;
+    margin-top:13px;
+}
+
+.gameHeader{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+}
+
+.gameNumber{
+    color:#71869c;
+    font-size:11px;
+    margin-bottom:5px;
+}
+
+.teams{
+    font-size:18px;
+    font-weight:bold;
+    line-height:1.5;
+}
+
+.vs{
+    color:#71869c;
+    font-size:11px;
+}
+
+.badge{
+    padding:6px 9px;
+    border-radius:20px;
+    font-size:10px;
+    font-weight:bold;
+    background:#173c2a;
+    color:#00e676;
+    white-space:nowrap;
+}
+
+.badgeModerate{
+    padding:6px 9px;
+    border-radius:20px;
+    font-size:10px;
+    font-weight:bold;
+    background:#443a17;
+    color:#ffd740;
+    white-space:nowrap;
+}
+
+.badgeAvoid{
+    padding:6px 9px;
+    border-radius:20px;
+    font-size:10px;
+    font-weight:bold;
+    background:#402126;
+    color:#ff6878;
+    white-space:nowrap;
+}
+
+.odds{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin-top:15px;
+}
+
+.odd{
+    background:#101f2e;
+    border:1px solid #29445d;
+    border-radius:10px;
+    padding:10px;
+    text-align:center;
+}
+
+.oddLabel{
+    color:#8195aa;
+    font-size:11px;
+}
+
+.oddValue{
+    color:#00e676;
+    font-size:19px;
+    font-weight:bold;
+    margin-top:4px;
+}
+
+.scoreGrid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin-top:12px;
+}
+
+.score{
+    background:#101f2e;
+    border-radius:10px;
+    padding:10px;
+    text-align:center;
+}
+
+.score span{
+    color:#8195aa;
+    font-size:10px;
+}
+
+.score strong{
+    display:block;
+    margin-top:4px;
+    font-size:18px;
+}
+
+.prediction{
+    background:#102537;
+    border-radius:12px;
+    padding:15px;
+    margin-top:15px;
+}
+
+.small{
+    color:#71869c;
+    font-size:11px;
+}
+
+.predictionMain{
+    font-size:21px;
+    font-weight:bold;
+    margin-top:5px;
+}
+
+.green{
+    color:#00e676;
+}
+
+.yellow{
+    color:#ffd740;
+}
+
+.red{
+    color:#ff6678;
+}
+
+.raw{
+    background:#06111f;
+    border:1px solid #233b53;
+    border-radius:12px;
+    padding:14px;
+    white-space:pre-wrap;
+    word-break:break-word;
+    color:#c8d4df;
+    font-size:12px;
+    line-height:1.6;
+    max-height:350px;
+    overflow:auto;
+}
+
+input[type="text"],
+select{
+    width:100%;
+    padding:13px;
+    margin-top:7px;
+    background:#15283b;
+    border:1px solid #35516d;
+    color:white;
+    border-radius:10px;
+}
+
+.historyItem{
+    background:#091623;
+    border:1px solid #253e57;
+    border-radius:12px;
+    padding:12px;
+    margin-top:10px;
+    font-size:13px;
+    line-height:1.6;
+}
+
+.pipelineRow{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:12px 0;
+    border-bottom:1px solid #1d3144;
+}
+
+.pipelineRow:last-child{
+    border-bottom:0;
+}
+
+.warning{
+    background:#321c21;
+    color:#ffadb3;
+    padding:13px;
+    border-radius:10px;
+    font-size:12px;
+    line-height:1.6;
+}
+
+.empty{
+    text-align:center;
+    color:#8fa3b7;
+    padding:20px 5px;
+}
+
+.hidden{
+    display:none !important;
+}
+
+@media(max-width:500px){
+
+    .logo{
+        font-size:34px;
+    }
+
+    .teams{
+        font-size:16px;
+    }
+
+    .gameHeader{
+        flex-direction:column;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- HEADER -->
+
+<div class="header">
+
+    <div class="logo">
+        VIRTUAL<span>AI</span>
+    </div>
+
+    <div class="subtitle">
+        Virtual Game Screenshot Statistical Analyzer
+    </div>
+
+</div>
+
+
+<!-- UPLOAD -->
+
+<div class="card">
+
+    <div class="uploadBox">
+
+        <div class="uploadIcon">
+            📸
+        </div>
+
+        <div class="uploadTitle">
+            Upload Screenshot
+        </div>
+
+        <div class="uploadInfo">
+            Select a screenshot from your phone.
+            The image will appear here before analysis.
+        </div>
+
+        <label
+            for="imageInput"
+            class="uploadLabel"
+        >
+            📁 SELECT SCREENSHOT
+        </label>
+
+        <input
+            id="imageInput"
+            type="file"
+            accept="image/*"
+        >
+
+        <div
+            id="previewBox"
+            class="previewBox"
+        >
+
+            <img
+                id="preview"
+                alt="Selected screenshot"
+            >
+
+        </div>
+
+        <button
+            id="analyzeButton"
+            class="analyzeButton"
+            disabled
+        >
+            🔍 ANALYZE SCREENSHOT
+        </button>
+
+        <button
+            id="clearButton"
+            class="clearButton"
+        >
+            🗑️ CLEAR
+        </button>
+
+        <div
+            id="status"
+            class="status"
+        >
+            Waiting for screenshot...
+        </div>
+
+        <div
+            id="progress"
+            class="progress"
+        >
+
+            <div
+                id="progressInner"
+                class="progressInner"
+            ></div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- SUMMARY -->
+
+<div
+    id="summaryCard"
+    class="card hidden"
+>
+
+    <h2>
+        📊 Analysis Summary
+    </h2>
+
+    <div class="statGrid">
+
+        <div class="stat">
+
+            <div
+                id="gamesDetected"
+                class="statValue"
+            >
+                0
+            </div>
+
+            <div class="statLabel">
+                GAMES DETECTED
+            </div>
+
+        </div>
+
+        <div class="stat">
+
+            <div
+                id="oddsDetected"
+                class="statValue"
+            >
+                0
+            </div>
+
+            <div class="statLabel">
+                GAMES WITH ODDS
+            </div>
+
+        </div>
+
+        <div class="stat">
+
+            <div
+                id="strongPicks"
+                class="statValue"
+            >
+                0
+            </div>
+
+            <div class="statLabel">
+                STRONGER SIGNALS
+            </div>
+
+        </div>
+
+        <div class="stat">
+
+            <div
+                id="avoidCount"
+                class="statValue"
+            >
+                0
+            </div>
+
+            <div class="statLabel">
+                AVOID
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- PREDICTIONS -->
+
+<div
+    id="predictionCard"
+    class="card hidden"
+>
+
+    <h2>
+        🎯 Statistical Analysis
+    </h2>
+
+    <div id="predictions"></div>
+
+</div>
+
+
+<!-- OCR RESULT -->
+
+<div
+    id="rawCard"
+    class="card hidden"
+>
+
+    <h3>
+        📝 Text Detected
+    </h3>
+
+    <div
+        id="rawText"
+        class="raw"
+    ></div>
+
+</div>
+
+
+<!-- HISTORY -->
+
+<div class="card">
+
+    <h2>
+        🗄️ Historical Results
+    </h2>
+
+    <p class="small">
+        Results are stored locally in your browser.
+    </p>
+
+    <label>
+        Game
+    </label>
+
+    <input
+        id="historyGame"
+        type="text"
+        placeholder="Example: Team A vs Team B"
+    >
+
+    <label>
+        Actual Result
+    </label>
+
+    <select id="historyResult">
+
+        <option value="1">
+            Home Win
+        </option>
+
+        <option value="X">
+            Draw
+        </option>
+
+        <option value="2">
+            Away Win
+        </option>
+
+    </select>
+
+    <button
+        id="saveHistory"
+        class="analyzeButton"
+    >
+        💾 SAVE RESULT
+    </button>
+
+    <button
+        id="backtestButton"
+        class="clearButton"
+    >
+        📈 RUN BACKTEST
+    </button>
+
+    <div
+        id="backtestResult"
+        class="prediction hidden"
+    ></div>
+
+    <div id="historyList"></div>
+
+    <button
+        id="clearHistory"
+        class="clearButton"
+    >
+        🗑️ DELETE HISTORY
+    </button>
+
+</div>
+
+
+<!-- PIPELINE -->
+
+<div class="card">
+
+    <h3>
+        🚀 Analysis Pipeline
+    </h3>
+
+    <div class="pipelineRow">
+
+        <span>
+            Screenshot
+        </span>
+
+        <strong
+            id="pipeUpload"
+            class="green"
+        >
+            READY
+        </strong>
+
+    </div>
+
+    <div class="pipelineRow">
+
+        <span>
+            OCR
+        </span>
+
+        <strong id="pipeOCR">
+            READY
+        </strong>
+
+    </div>
+
+    <div class="pipelineRow">
+
+        <span>
+            Game Detection
+        </span>
+
+        <strong id="pipeGames">
+            READY
+        </strong>
+
+    </div>
+
+    <div class="pipelineRow">
+
+        <span>
+            Odds Extraction
+        </span>
+
+        <strong id="pipeOdds">
+            READY
+        </strong>
+
+    </div>
+
+    <div class="pipelineRow">
+
+        <span>
+            Statistical Model
+        </span>
+
+        <strong id="pipeModel">
+            READY
+        </strong>
+
+    </div>
+
+    <div class="pipelineRow">
+
+        <span>
+            Backtesting
+        </span>
+
+        <strong id="pipeBacktest">
+            READY
+        </strong>
+
+    </div>
+
+</div>
+
+
+<!-- DISCLAIMER -->
+
+<div class="card">
+
+    <div class="warning">
+
+        <strong>Important:</strong>
+        This system analyzes screenshot information
+        and historical results. It does not access
+        SportyBet's private RNG/internal algorithm.
+        Statistical confidence is not a guarantee of
+        winning.
+
+    </div>
+
+</div>
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   ELEMENTS
+===================================================== */
+
+const imageInput =
+    document.getElementById("imageInput");
+
+const preview =
+    document.getElementById("preview");
+
+const previewBox =
+    document.getElementById("previewBox");
+
+const analyzeButton =
+    document.getElementById("analyzeButton");
+
+const clearButton =
+    document.getElementById("clearButton");
+
+const status =
+    document.getElementById("status");
+
+const progress =
+    document.getElementById("progress");
+
+const progressInner =
+    document.getElementById("progressInner");
+
+const summaryCard =
+    document.getElementById("summaryCard");
+
+const predictionCard =
+    document.getElementById("predictionCard");
+
+const predictions =
+    document.getElementById("predictions");
+
+const rawCard =
+    document.getElementById("rawCard");
+
+const rawText =
+    document.getElementById("rawText");
+
+const gamesDetected =
+    document.getElementById("gamesDetected");
+
+const oddsDetected =
+    document.getElementById("oddsDetected");
+
+const strongPicks =
+    document.getElementById("strongPicks");
+
+const avoidCount =
+    document.getElementById("avoidCount");
+
+const pipeUpload =
+    document.getElementById("pipeUpload");
+
+const pipeOCR =
+    document.getElementById("pipeOCR");
+
+const pipeGames =
+    document.getElementById("pipeGames");
+
+const pipeOdds =
+    document.getElementById("pipeOdds");
+
+const pipeModel =
+    document.getElementById("pipeModel");
+
+const pipeBacktest =
+    document.getElementById("pipeBacktest");
+
+const historyGame =
+    document.getElementById("historyGame");
+
+const historyResult =
+    document.getElementById("historyResult");
+
+const saveHistory =
+    document.getElementById("saveHistory");
+
+const backtestButton =
+    document.getElementById("backtestButton");
+
+const clearHistory =
+    document.getElementById("clearHistory");
+
+const backtestResult =
+    document.getElementById("backtestResult");
+
+const historyList =
+    document.getElementById("historyList");
+
+
+/* =====================================================
+   STATE
+===================================================== */
+
+let selectedFile = null;
+let selectedImageData = null;
+let currentGames = [];
+let analyzing = false;
+
+
+/* =====================================================
+   PAGE LOAD
+===================================================== */
+
+window.addEventListener(
+    "load",
+    function(){
+
+        console.log(
+            "VirtualAI loaded."
+        );
+
+        if(
+            typeof Tesseract ===
+            "undefined"
+        ){
+
+            status.textContent =
+                "⚠️ OCR engine is loading. Check your connection.";
+
+        }
+
+        renderHistory();
+
+    }
+);
+
+
+/* =====================================================
+   IMAGE UPLOAD
+===================================================== */
+
+imageInput.addEventListener(
+    "change",
+    function(){
+
+        const file =
+            imageInput.files &&
+            imageInput.files[0];
+
+        if(!file){
+
+            return;
+
+        }
+
+        handleFileSelection(file);
+
+    }
+);
+
+
+/* =====================================================
+   FILE HANDLER
+===================================================== */
+
+function handleFileSelection(file){
+
+    if(!file){
+
+        return;
+
+    }
+
+
+    console.log(
+        "Selected file:",
+        file.name,
+        file.type,
+        file.size
+    );
+
+
+    if(
+        !file.type ||
+        !file.type.startsWith("image/")
+    ){
+
+        status.textContent =
+            "❌ Please select an image.";
+
+        analyzeButton.disabled =
+            true;
+
+        return;
+
+    }
+
+
+    selectedFile =
+        file;
+
+
+    selectedImageData =
+        null;
+
+
+    analyzeButton.disabled =
+        true;
+
+
+    previewBox.style.display =
+        "none";
+
+
+    status.textContent =
+        "⏳ Loading screenshot...";
+
+
+    pipeUpload.textContent =
+        "LOADING";
+
+
+    pipeUpload.className =
+        "yellow";
+
+
+    /*
+     * Create a temporary browser URL.
+     */
+
+    const objectURL =
+        URL.createObjectURL(file);
+
+
+    preview.onload =
+        function(){
+
+            console.log(
+                "Preview loaded."
+            );
+
+
+            /*
+             * Save image as data URL too.
+             * This makes OCR work even if the
+             * temporary object URL disappears.
+             */
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload =
+                function(event){
+
+                    selectedImageData =
+                        event.target.result;
+
+
+                    previewBox.style.display =
+                        "block";
+
+
+                    analyzeButton.disabled =
+                        false;
+
+
+                    status.textContent =
+                        "✅ Screenshot successfully received";
+
+
+                    pipeUpload.textContent =
+                        "READY";
+
+
+                    pipeUpload.className =
+                        "green";
+
+
+                    URL.revokeObjectURL(
+                        objectURL
+                    );
+
+                };
+
+
+            reader.onerror =
+                function(){
+
+                    selectedImageData =
+                        null;
+
+                    analyzeButton.disabled =
+                        true;
+
+                    status.textContent =
+                        "❌ Could not prepare screenshot.";
+
+                    pipeUpload.textContent =
+                        "ERROR";
+
+                    pipeUpload.className =
+                        "red";
+
+                    URL.revokeObjectURL(
+                        objectURL
+                    );
+
+                };
+
+
+            reader.readAsDataURL(file);
+
+        };
+
+
+    preview.onerror =
+        function(){
+
+            console.error(
+                "Image preview failed."
+            );
+
+
+            selectedFile =
+                null;
+
+            selectedImageData =
+                null;
+
+
+            analyzeButton.disabled =
+                true;
+
+
+            previewBox.style.display =
+                "none";
+
+
+            status.textContent =
+                "❌ Could not display screenshot.";
+
+
+            pipeUpload.textContent =
+                "ERROR";
+
+
+            pipeUpload.className =
+                "red";
+
+
+            URL.revokeObjectURL(
+                objectURL
+            );
+
+        };
+
+
+    preview.src =
+        objectURL;
+
+}
+
+
+/* =====================================================
+   CLEAR
+===================================================== */
+
+clearButton.addEventListener(
+    "click",
+    function(){
+
+        selectedFile =
+            null;
+
+        selectedImageData =
+            null;
+
+        currentGames =
+            [];
+
+
+        imageInput.value =
+            "";
+
+
+        preview.src =
+            "";
+
+
+        previewBox.style.display =
+            "none";
+
+
+        analyzeButton.disabled =
+            true;
+
+
+        progress.style.display =
+            "none";
+
+
+        progressInner.style.width =
+            "0%";
+
+
+        status.textContent =
+            "Waiting for screenshot...";
+
+
+        summaryCard.classList.add(
+            "hidden"
+        );
+
+
+        predictionCard.classList.add(
+            "hidden"
+        );
+
+
+        rawCard.classList.add(
+            "hidden"
+        );
+
+
+        predictions.innerHTML =
+            "";
+
+
+        rawText.textContent =
+            "";
+
+
+        pipeUpload.textContent =
+            "READY";
+
+        pipeUpload.className =
+            "green";
+
+
+        pipeOCR.textContent =
+            "READY";
+
+        pipeOCR.className =
+            "";
+
+
+        pipeGames.textContent =
+            "READY";
+
+        pipeGames.className =
+            "";
+
+
+        pipeOdds.textContent =
+            "READY";
+
+        pipeOdds.className =
+            "";
+
+
+        pipeModel.textContent =
+            "READY";
+
+        pipeModel.className =
+            "";
+
+    }
+);
+
+
+/* =====================================================
+   ANALYZE SCREENSHOT
+===================================================== */
+
+analyzeButton.addEvent
