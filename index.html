@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>VirtualAI OCR Analyzer</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<style>
+*{
+box-sizing:border-box;
+}
+
+body{
+margin:0;
+font-family:Arial,sans-serif;
+background:#06111f;
+color:white;
+}
+
+.container{
+max-width:720px;
+margin:auto;
+padding:18px;
+}
+
+.header{
+text-align:center;
+padding:25px 5px;
+}
+
+.logo{
+font-size:40px;
+font-weight:900;
+}
+
+.logo span{
+color:#00e676;
+}
+
+.subtitle{
+color:#91a4b8;
+margin-top:7px;
+}
+
+.card{
+background:#0e1c2b;
+border:1px solid #233b53;
+border-radius:18px;
+padding:18px;
+margin-bottom:16px;
+}
+
+.upload{
+text-align:center;
+border:2px dashed #00e676;
+border-radius:15px;
+padding:25px 15px;
+}
+
+.icon{
+font-size:50px;
+}
+
+.title{
+font-size:20px;
+font-weight:bold;
+margin-top:8px;
+}
+
+.info{
+color:#91a4b8;
+font-size:14px;
+line-height:1.5;
+margin-top:8px;
+}
+
+input[type=file]{
+display:block;
+width:100%;
+margin-top:18px;
+padding:14px;
+background:#15283b;
+color:white;
+border-radius:10px;
+border:1px solid #35516d;
+}
+
+#preview{
+display:none;
+width:100%;
+max-height:600px;
+object-fit:contain;
+margin-top:18px;
+border-radius:12px;
+background:#000;
+}
+
+button{
+width:100%;
+padding:15px;
+border:0;
+border-radius:12px;
+font-size:16px;
+font-weight:bold;
+margin-top:13px;
+cursor:pointer;
+}
+
+.analyze{
+background:#00e676;
+color:#00180b;
+}
+
+.analyze:disabled{
+background:#40504b;
+color:#aab6b1;
+}
+
+.clear{
+background:#263c53;
+color:white;
+}
+
+.status{
+text-align:center;
+color:#9eb1c5;
+margin-top:12px;
+font-size:14px;
+}
+
+.progress{
+height:8px;
+background:#25394e;
+border-radius:20px;
+overflow:hidden;
+margin-top:12px;
+display:none;
+}
+
+.progressInner{
+height:100%;
+width:0%;
+background:#00e676;
+transition:width .25s;
+}
+
+.results{
+display:none;
+}
+
+.resultBox{
+background:#091623;
+border:1px solid #253e57;
+border-radius:14px;
+padding:15px;
+margin-top:12px;
+}
+
+.resultTitle{
+font-size:18px;
+font-weight:bold;
+}
+
+.row{
+display:flex;
+justify-content:space-between;
+gap:10px;
+padding:11px 0;
+border-bottom:1px solid #1c3043;
+}
+
+.row:last-child{
+border-bottom:0;
+}
+
+.green{
+color:#00e676;
+font-weight:bold;
+}
+
+.yellow{
+color:#ffd740;
+font-weight:bold;
+}
+
+.red{
+color:#ff6675;
+font-weight:bold;
+}
+
+.raw{
+white-space:pre-wrap;
+background:#06111f;
+border:1px solid #20364c;
+padding:14px;
+border-radius:12px;
+font-size:13px;
+line-height:1.6;
+color:#d1dbe4;
+max-height:450px;
+overflow:auto;
+}
+
+.note{
+color:#91a4b8;
+font-size:12px;
+line-height:1.6;
+}
+
+.warning{
+background:#321c21;
+color:#ffadb3;
+padding:13px;
+border-radius:10px;
+font-size:12px;
+line-height:1.5;
+margin-top:15px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+
+<div class="logo">
+VIRTUAL<span>AI</span>
+</div>
+
+<div class="subtitle">
+Virtual Game Screenshot Analyzer
+</div>
+
+</div>
+
+
+<!-- UPLOAD -->
+
+<div class="card">
+
+<div class="upload">
+
+<div class="icon">📸</div>
+
+<div class="title">
+Upload SportyBet Screenshot
+</div>
+
+<div class="info">
+Choose a clear screenshot containing your virtual games.
+VirtualAI will read the visible text using OCR.
+</div>
+
+<input
+id="imageInput"
+type="file"
+accept="image/*"
+>
+
+<img
+id="preview"
+alt="Selected screenshot"
+>
+
+<button
+id="analyzeButton"
+class="analyze"
+disabled
+>
+🔍 READ SCREENSHOT
+</button>
+
+<button
+id="clearButton"
+class="clear"
+>
+🗑️ CLEAR
+</button>
+
+<div
+id="status"
+class="status"
+>
+Waiting for screenshot...
+</div>
+
+<div
+id="progress"
+class="progress"
+>
+<div
+id="progressInner"
+class="progressInner"
+></div>
+</div>
+
+</div>
+
+</div>
+
+
+<!-- OCR RESULTS -->
+
+<div
+id="results"
+class="card results"
+>
+
+<h2>🔎 Screenshot Analysis</h2>
+
+<div class="resultBox">
+
+<div class="row">
+<span>File</span>
+<strong id="fileName">-</strong>
+</div>
+
+<div class="row">
+<span>Size</span>
+<strong id="fileSize">-</strong>
+</div>
+
+<div class="row">
+<span>OCR status</span>
+<strong id="ocrStatus" class="green">
+READY
+</strong>
+</div>
+
+</div>
+
+<h3>📝 Detected Text</h3>
+
+<div
+id="rawText"
+class="raw"
+>
+No text detected yet.
+</div>
+
+<div class="warning">
+
+⚠️ OCR only reads information that is visible in the screenshot.
+It does not reveal SportyBet's private game-generation algorithm,
+RNG or future results.
+
+</div>
+
+</div>
+
+
+<!-- NEXT-STAGE PREVIEW -->
+
+<div class="card">
+
+<h3>🚀 Analysis Pipeline</h3>
+
+<div class="resultBox">
+
+<div class="row">
+<span>1. Screenshot</span>
+<strong class="green">READY</strong>
+</div>
+
+<div class="row">
+<span>2. OCR text extraction</span>
+<strong class="green">ACTIVE</strong>
+</div>
+
+<div class="row">
+<span>3. Game detection</span>
+<strong>Next stage</strong>
+</div>
+
+<div class="row">
+<span>4. Odds extraction</span>
+<strong>Next stage</strong>
+</div>
+
+<div class="row">
+<span>5. Statistical model</span>
+<strong>Next stage</strong>
+</div>
+
+<div class="row">
+<span>6. Backtesting</span>
+<strong>Next stage</strong>
+</div>
+
+</div>
+
+<p class="note">
+The goal is to build the system step-by-step and test each
+component before relying on its results.
+</p>
+
+</div>
+
+
+</div>
+
+
+<script>
+
+/* =========================================
+   ELEMENTS
+========================================= */
+
+const imageInput =
+document.getElementById("imageInput");
+
+const preview =
+document.getElementById("preview");
+
+const analyzeButton =
+document.getElementById("analyzeButton");
+
+const clearButton =
+document.getElementById("clearButton");
+
+const status =
+document.getElementById("status");
+
+const progress =
+document.getElementById("progress");
+
+const progressInner =
+document.getElementById("progressInner");
+
+const results =
+document.getElementById("results");
+
+const rawText =
+document.getElementById("rawText");
+
+const fileName =
+document.getElementById("fileName");
+
+const fileSize =
+document.getElementById("fileSize");
+
+const ocrStatus =
+document.getElementById("ocrStatus");
+
+
+let selectedFile=null;
+
+
+/* =========================================
+   IMAGE SELECTION
+========================================= */
+
+imageInput.onchange=function(){
+
+const file=
+imageInput.files &&
+imageInput.files[0];
+
+if(!file){
+
+status.textContent=
+"No screenshot selected.";
+
+return;
+
+}
+
+if(!file.type.startsWith("image/")){
+
+status.textContent=
+"❌ Please select an image.";
+
+return;
+
+}
+
+selectedFile=file;
+
+
+/* Create preview */
+
+const imageURL=
+URL.createObjectURL(file);
+
+preview.onload=function(){
+
+preview.style.display="block";
+
+analyzeButton.disabled=false;
+
+status.textContent=
+"✅ Screenshot loaded successfully.";
+
+};
+
+preview.onerror=function(){
+
+preview.style.display="none";
+
+analyzeButton.disabled=true;
+
+status.textContent=
+"❌ Could not display image.";
+
+};
+
+preview.src=imageURL;
+
+
+/* File information */
+
+fileName.textContent=
+file.name;
+
+fileSize.textContent=
+formatBytes(file.size);
+
+};
+
+
+/* =========================================
+   OCR
+========================================= */
+
+analyzeButton.onclick=
+async function(){
+
+if(!selectedFile){
+
+alert(
+"Please choose a screenshot first."
+);
+
+return;
+
+}
+
+analyzeButton.disabled=true;
+
+progress.style.display="block";
+
+progressInner.style.width="5%";
+
+ocrStatus.textContent=
+"READING";
+
+ocrStatus.className=
+"yellow";
+
+status.textContent=
+"🔎 Starting OCR...";
+
+results.style.display="block";
+
+
+try{
+
+const result=
+await Tesseract.recognize(
+
+selectedFile,
+
+"eng",
+
+{
+
+logger:function(info){
+
+if(info.status){
+
+status.textContent=
+"🔎 "+
+info.status+
+" "+
+Math.round(
+(info.progress || 0)*100
+)+
+"%";
+}
+
+if(
+info.status===
+"recognizing text"
+){
+
+const percentage=
+Math.round(
+info.progress*100
+);
+
+progressInner.style.width=
+Math.max(
+5,
+percentage
+)+"%";
+
+}
+
+}
+
+}
+
+);
+
+
+const text=
+(result.data.text || "")
+.trim();
+
+
+progressInner.style.width=
+"100%";
+
+
+if(text){
+
+rawText.textContent=
+text;
+
+status.textContent=
+"✅ OCR complete.";
+
+ocrStatus.textContent=
+"COMPLETE";
+
+ocrStatus.className=
+"green";
+
+}else{
+
+rawText.textContent=
+"No readable text was detected.";
+
+status.textContent=
+"⚠️ No readable text found.";
+
+ocrStatus.textContent=
+"NO TEXT";
+
+ocrStatus.className=
+"red";
+
+}
+
+
+}catch(error){
+
+console.error(error);
+
+status.textContent=
+"❌ OCR failed.";
+
+ocrStatus.textContent=
+"ERROR";
+
+ocrStatus.className=
+"red";
+
+rawText.textContent=
+"Unable to read this screenshot.";
+
+}
+
+analyzeButton.disabled=false;
+
+};
+
+
+/* =========================================
+   CLEAR
+========================================= */
+
+clearButton.onclick=function(){
+
+imageInput.value="";
+
+selectedFile=null;
+
+preview.src="";
+
+preview.style.display="none";
+
+analyzeButton.disabled=true;
+
+status.textContent=
+"Waiting for screenshot...";
+
+progress.style.display="none";
+
+progressInner.style.width="0%";
+
+results.style.display="none";
+
+rawText.textContent=
+"No text detected yet.";
+
+fileName.textContent="-";
+
+fileSize.textContent="-";
+
+ocrStatus.textContent=
+"READY";
+
+ocrStatus.className=
+"green";
+
+};
+
+
+/* =========================================
+   FORMAT FILE SIZE
+========================================= */
+
+function formatBytes(bytes){
+
+if(bytes<1024){
+
+return bytes+" B";
+
+}
+
+if(bytes<1024*1024){
+
+return(
+bytes/1024
+).toFixed(1)+" KB";
+
+}
+
+return(
+bytes/(1024*1024)
+).toFixed(2)+" MB";
+
+}
+
+</script>
+
+</body>
+  </html>
