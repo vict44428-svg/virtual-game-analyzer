@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+>
+
+<title>VirtualAI Game Analyzer</title>
+
+<!-- =====================================================
+     TESSERACT OCR
+====================================================== -->
+<script
+    src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"
+    crossorigin="anonymous">
+</script>
+
+
+<style>
+
+/* =====================================================
+   RESET
+====================================================== */
+
+*{
+    box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
+}
+
+html,
+body{
+    margin:0;
+    padding:0;
+    width:100%;
+    min-height:100%;
+}
+
+body{
+    background:#06111f;
+    color:#ffffff;
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+}
+
+
+/* =====================================================
+   MAIN
+====================================================== */
+
+.container{
+    width:100%;
+    max-width:850px;
+    margin:0 auto;
+    padding:15px;
+}
+
+
+/* =====================================================
+   HEADER
+====================================================== */
+
+.header{
+    text-align:center;
+    padding:18px 0 22px;
+}
+
+.logo{
+    font-size:38px;
+    font-weight:900;
+    letter-spacing:-1px;
+}
+
+.logo span{
+    color:#00e676;
+}
+
+.subtitle{
+    color:#91a4b7;
+    font-size:14px;
+    margin-top:7px;
+}
+
+
+/* =====================================================
+   CARD
+====================================================== */
+
+.card{
+    background:#0d1b2a;
+    border:1px solid #233b53;
+    border-radius:18px;
+    padding:17px;
+    margin-bottom:15px;
+}
+
+
+/* =====================================================
+   UPLOAD
+====================================================== */
+
+.uploadBox{
+    border:2px dashed #00e676;
+    border-radius:16px;
+    padding:22px 13px;
+    text-align:center;
+}
+
+.uploadIcon{
+    font-size:48px;
+}
+
+.uploadTitle{
+    font-size:21px;
+    font-weight:bold;
+    margin-top:9px;
+}
+
+.uploadInfo{
+    color:#91a4b7;
+    font-size:13px;
+    line-height:1.6;
+    margin-top:7px;
+}
+
+
+/* =====================================================
+   REAL FILE INPUT
+====================================================== */
+
+.fileInputWrapper{
+    margin-top:17px;
+}
+
+#imageInput{
+    display:block;
+    width:100%;
+    padding:13px;
+    border-radius:12px;
+    border:1px solid #34536e;
+    background:#102234;
+    color:#ffffff;
+    font-size:14px;
+}
+
+
+/* =====================================================
+   MOBILE FILE INPUT BUTTON
+====================================================== */
+
+#imageInput::file-selector-button{
+    border:0;
+    background:#00e676;
+    color:#001b0b;
+    padding:11px 13px;
+    border-radius:9px;
+    font-weight:bold;
+    margin-right:10px;
+}
+
+
+/* =====================================================
+   PREVIEW
+====================================================== */
+
+.previewBox{
+    display:none;
+    margin-top:17px;
+    background:#000000;
+    border-radius:13px;
+    padding:8px;
+    border:1px solid #29445d;
+}
+
+#preview{
+    display:block;
+    width:100%;
+    max-width:100%;
+    max-height:500px;
+    object-fit:contain;
+    border-radius:9px;
+}
+
+
+/* =====================================================
+   BUTTONS
+====================================================== */
+
+button{
+    display:block;
+    width:100%;
+    border:0;
+    border-radius:12px;
+    padding:15px;
+    margin-top:12px;
+    font-size:15px;
+    font-weight:bold;
+    cursor:pointer;
+    touch-action:manipulation;
+}
+
+button:active{
+    transform:scale(.98);
+}
+
+.analyzeButton{
+    background:#00e676;
+    color:#001b0b;
+}
+
+.analyzeButton:disabled{
+    background:#34443d;
+    color:#a4b1ac;
+    cursor:not-allowed;
+}
+
+.clearButton{
+    background:#263d52;
+    color:#ffffff;
+}
+
+
+/* =====================================================
+   STATUS
+====================================================== */
+
+.status{
+    text-align:center;
+    margin-top:13px;
+    color:#9eb1c5;
+    font-size:14px;
+    line-height:1.5;
+}
+
+
+/* =====================================================
+   PROGRESS
+====================================================== */
+
+.progress{
+    display:none;
+    width:100%;
+    height:8px;
+    background:#24384c;
+    border-radius:20px;
+    margin-top:13px;
+    overflow:hidden;
+}
+
+.progressInner{
+    width:0%;
+    height:100%;
+    background:#00e676;
+    transition:width .2s linear;
+}
+
+
+/* =====================================================
+   STATS
+====================================================== */
+
+.statGrid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+}
+
+.stat{
+    background:#091623;
+    border:1px solid #253e57;
+    border-radius:12px;
+    padding:14px;
+    text-align:center;
+}
+
+.statValue{
+    font-size:27px;
+    font-weight:bold;
+    color:#00e676;
+}
+
+.statLabel{
+    color:#8296aa;
+    font-size:10px;
+    margin-top:5px;
+}
+
+
+/* =====================================================
+   GAME CARD
+====================================================== */
+
+.game{
+    background:#091623;
+    border:1px solid #29435d;
+    border-radius:15px;
+    padding:15px;
+    margin-top:13px;
+}
+
+.gameHeader{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+}
+
+.gameNumber{
+    color:#71869c;
+    font-size:11px;
+    margin-bottom:5px;
+}
+
+.teams{
+    font-size:18px;
+    font-weight:bold;
+    line-height:1.5;
+}
+
+.vs{
+    color:#71869c;
+    font-size:11px;
+}
+
+.badge,
+.badgeModerate,
+.badgeAvoid{
+    padding:6px 9px;
+    border-radius:20px;
+    font-size:9px;
+    font-weight:bold;
+    white-space:nowrap;
+}
+
+.badge{
+    background:#173c2a;
+    color:#00e676;
+}
+
+.badgeModerate{
+    background:#443a17;
+    color:#ffd740;
+}
+
+.badgeAvoid{
+    background:#402126;
+    color:#ff6878;
+}
+
+
+/* =====================================================
+   ODDS
+====================================================== */
+
+.odds{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin-top:15px;
+}
+
+.odd{
+    background:#101f2e;
+    border:1px solid #29445d;
+    border-radius:10px;
+    padding:10px;
+    text-align:center;
+}
+
+.oddLabel{
+    color:#8195aa;
+    font-size:11px;
+}
+
+.oddValue{
+    color:#00e676;
+    font-size:19px;
+    font-weight:bold;
+    margin-top:4px;
+}
+
+
+/* =====================================================
+   PROBABILITY
+====================================================== */
+
+.scoreGrid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin-top:12px;
+}
+
+.score{
+    background:#101f2e;
+    border-radius:10px;
+    padding:10px;
+    text-align:center;
+}
+
+.score span{
+    color:#8195aa;
+    font-size:10px;
+}
+
+.score strong{
+    display:block;
+    margin-top:4px;
+    font-size:18px;
+}
+
+
+/* =====================================================
+   PREDICTION
+====================================================== */
+
+.prediction{
+    background:#102537;
+    border-radius:12px;
+    padding:15px;
+    margin-top:15px;
+}
+
+.small{
+    color:#71869c;
+    font-size:11px;
+}
+
+.predictionMain{
+    font-size:21px;
+    font-weight:bold;
+    margin-top:5px;
+}
+
+
+/* =====================================================
+   COLORS
+====================================================== */
+
+.green{
+    color:#00e676;
+}
+
+.yellow{
+    color:#ffd740;
+}
+
+.red{
+    color:#ff6678;
+}
+
+
+/* =====================================================
+   RAW OCR
+====================================================== */
+
+.raw{
+    background:#06111f;
+    border:1px solid #233b53;
+    border-radius:12px;
+    padding:14px;
+    white-space:pre-wrap;
+    word-break:break-word;
+    color:#c8d4df;
+    font-size:12px;
+    line-height:1.6;
+    max-height:350px;
+    overflow:auto;
+}
+
+
+/* =====================================================
+   INPUTS
+====================================================== */
+
+input[type="text"],
+select{
+    width:100%;
+    padding:13px;
+    margin-top:7px;
+    margin-bottom:8px;
+    background:#15283b;
+    border:1px solid #35516d;
+    color:#ffffff;
+    border-radius:10px;
+    font-size:14px;
+}
+
+
+/* =====================================================
+   PIPELINE
+====================================================== */
+
+.pipelineRow{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:12px 0;
+    border-bottom:1px solid #1d3144;
+    font-size:13px;
+}
+
+.pipelineRow:last-child{
+    border-bottom:0;
+}
+
+
+/* =====================================================
+   HISTORY
+====================================================== */
+
+.historyItem{
+    background:#091623;
+    border:1px solid #253e57;
+    border-radius:12px;
+    padding:12px;
+    margin-top:10px;
+    font-size:13px;
+    line-height:1.6;
+}
+
+
+/* =====================================================
+   EMPTY
+====================================================== */
+
+.empty{
+    text-align:center;
+    color:#8fa3b7;
+    padding:20px 5px;
+    line-height:1.6;
+}
+
+
+/* =====================================================
+   WARNING
+====================================================== */
+
+.warning{
+    background:#321c21;
+    color:#ffadb3;
+    padding:13px;
+    border-radius:10px;
+    font-size:12px;
+    line-height:1.6;
+}
+
+
+/* =====================================================
+   HIDDEN
+====================================================== */
+
+.hidden{
+    display:none !important;
+}
+
+
+/* =====================================================
+   MOBILE
+====================================================== */
+
+@media(max-width:500px){
+
+    .container{
+        padding:10px;
+    }
+
+    .logo{
+        font-size:34px;
+    }
+
+    .card{
+        padding:14px;
+        border-radius:15px;
+    }
+
+    .teams{
+        font-size:16px;
+    }
+
+    .gameHeader{
+        flex-direction:column;
+    }
+
+    .badge,
+    .badgeModerate,
+    .badgeAvoid{
+        align-self:flex-start;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+<!-- =====================================================
+     HEADER
+====================================================== -->
+
+<div class="header">
+
+    <div class="logo">
+        VIRTUAL<span>AI</span>
+    </div>
+
+    <div class="subtitle">
+        Virtual Game Screenshot Statistical Analyzer
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     UPLOAD CARD
+====================================================== -->
+
+<div class="card">
+
+    <div class="uploadBox">
+
+        <div class="uploadIcon">
+            📸
+        </div>
+
+        <div class="uploadTitle">
+            Upload Screenshot
+        </div>
+
+        <div class="uploadInfo">
+            Select a SportyBet virtual-game screenshot
+            from your phone. The screenshot will appear
+            below before analysis.
+        </div>
+
+
+        <!-- IMPORTANT:
+             Native file input is intentionally used.
+             This is more reliable on Android browsers.
+        -->
+
+        <div class="fileInputWrapper">
+
+            <input
+                id="imageInput"
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+            >
+
+        </div>
+
+
+        <!-- PREVIEW -->
+
+        <div
+            id="previewBox"
+            class="previewBox">
+
+            <img
+                id="preview"
+                alt="Selected screenshot">
+
+        </div>
+
+
+        <!-- ANALYZE -->
+
+        <button
+            id="analyzeButton"
+            class="analyzeButton"
+            disabled>
+
+            🔍 ANALYZE SCREENSHOT
+
+        </button>
+
+
+        <!-- CLEAR -->
+
+        <button
+            id="clearButton"
+            class="clearButton">
+
+            🗑️ CLEAR
+
+        </button>
+
+
+        <!-- STATUS -->
+
+        <div
+            id="status"
+            class="status">
+
+            Waiting for screenshot...
+
+        </div>
+
+
+        <!-- PROGRESS -->
+
+        <div
+            id="progress"
+            class="progress">
+
+            <div
+                id="progressInner"
+                class="progressInner">
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     SUMMARY
+====================================================== -->
+
+<div
+    id="summaryCard"
+    class="card hidden">
+
+    <h2>
+        📊 Analysis Summary
+    </h2>
+
+    <div class="statGrid">
+
+        <div class="stat">
+
+            <div
+                id="gamesDetected"
+                class="statValue">
+                0
+            </div>
+
+            <div class="statLabel">
+                GAMES DETECTED
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div
+                id="oddsDetected"
+                class="statValue">
+                0
+            </div>
+
+            <div class="statLabel">
+                GAMES WITH ODDS
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div
+                id="strongPicks"
+                class="statValue">
+                0
+            </div>
+
+            <div class="statLabel">
+                STRONGER SIGNALS
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div
+                id="avoidCount"
+                class="statValue">
+                0
+            </div>
+
+            <div class="statLabel">
+                AVOID
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     PREDICTIONS
+====================================================== -->
+
+<div
+    id="predictionCard"
+    class="card hidden">
+
+    <h2>
+        🎯 Statistical Analysis
+    </h2>
+
+    <div id="predictions"></div>
+
+</div>
+
+
+<!-- =====================================================
+     OCR RESULT
+====================================================== -->
+
+<div
+    id="rawCard"
+    class="card hidden">
+
+    <h3>
+        📝 Text Detected
+    </h3>
+
+    <div
+        id="rawText"
+        class="raw">
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     HISTORY
+====================================================== -->
+
+<div class="card">
+
+    <h2>
+        🗄️ Historical Results
+    </h2>
+
+    <p class="small">
+        Historical results are stored locally on this device.
+    </p>
+
+
+    <label>
+        Game
+    </label>
+
+    <input
+        id="historyGame"
+        type="text"
+        placeholder="Example: Team A vs Team B"
+    >
+
+
+    <label>
+        Actual Result
+    </label>
+
+    <select id="historyResult">
+
+        <option value="1">
+            Home Win
+        </option>
+
+        <option value="X">
+            Draw
+        </option>
+
+        <option value="2">
+            Away Win
+        </option>
+
+    </select>
+
+
+    <button
+        id="saveHistory"
+        class="analyzeButton">
+
+        💾 SAVE RESULT
+
+    </button>
+
+
+    <button
+        id="backtestButton"
+        class="clearButton">
+
+        📈 RUN BACKTEST
+
+    </button>
+
+
+    <div
+        id="backtestResult"
+        class="prediction hidden">
+    </div>
+
+
+    <div id="historyList"></div>
+
+
+    <button
+        id="clearHistory"
+        class="clearButton">
+
+        🗑️ DELETE HISTORY
+
+    </button>
+
+</div>
+
+
+<!-- =====================================================
+     PIPELINE
+====================================================== -->
+
+<div class="card">
+
+    <h3>
+        🚀 Analysis Pipeline
+    </h3>
+
+
+    <div class="pipelineRow">
+
+        <span>
+            Screenshot
+        </span>
+
+        <strong
+            id="pipeUpload"
+            class="green">
+
+            READY
+
+        </strong>
+
+    </div>
+
+
+    <div class="pipelineRow">
+
+        <span>
+            OCR
+        </span>
+
+        <strong id="pipeOCR">
+            READY
+        </strong>
+
+    </div>
+
+
+    <div class="pipelineRow">
+
+        <span>
+            Game Detection
+        </span>
+
+        <strong id="pipeGames">
+            READY
+        </strong>
+
+    </div>
+
+
+    <div class="pipelineRow">
+
+        <span>
+            Odds Extraction
+        </span>
+
+        <strong id="pipeOdds">
+            READY
+        </strong>
+
+    </div>
+
+
+    <div class="pipelineRow">
+
+        <span>
+            Statistical Model
+        </span>
+
+        <strong id="pipeModel">
+            READY
+        </strong>
+
+    </div>
+
+
+    <div class="pipelineRow">
+
+        <span>
+            Backtesting
+        </span>
+
+        <strong id="pipeBacktest">
+            READY
+        </strong>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     DISCLAIMER
+====================================================== -->
+
+<div class="card">
+
+    <div class="warning">
+
+        <strong>Important:</strong>
+
+        This system analyzes information visible
+        in screenshots and historical results.
+
+        It does not access SportyBet's private
+        RNG/internal algorithm and cannot guarantee
+        winning results.
+
+    </div>
+
+</div>
+
+
+</div>
+
+
+<!-- =====================================================
+     JAVASCRIPT
+====================================================== -->
+
+<script src="script.js"></script>
+
+
+</body>
+  </html>
